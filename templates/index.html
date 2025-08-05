@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offense Meter</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="main-container">
+        <header class="header">
+            <h1 class="title">Offense Meter</h1>
+            <p class="subtitle">Analyze text for offensive content</p>
+        </header>
+
+        <section class="analyzer-section">
+            <textarea id="text-input" class="text-input" placeholder="Enter text..."></textarea>
+            <button id="analyze-btn" class="analyze-btn">Analyze</button>
+        </section>
+
+        <section id="result-container" class="result-container">
+            <div class="result-header">
+                <h2 class="result-title">Analysis</h2>
+            </div>
+            <div id="results"></div>
+        </section>
+    </main>
+    <script src="/static/script.js"></script>
+</body>
+</html>
