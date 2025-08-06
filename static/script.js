@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Main elements
+    // --- Element Selectors ---
     const mainContainer = document.getElementById('main-container');
     const textInput = document.getElementById('text-input');
     const analyzeBtn = document.getElementById('analyze-btn');
@@ -9,31 +9,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const shamingLine = document.getElementById('shaming-line');
     const beatenUpProbEl = document.getElementById('beaten-up-prob');
     const cancelledProbEl = document.getElementById('cancelled-prob');
-
-    // Start screen elements
     const startScreen = document.getElementById('start-screen');
     const startBtn = document.getElementById('start-btn');
-
-    // Voice input elements
     const micBtn = document.getElementById('mic-btn');
-
-    // Loading overlay
     const loadingOverlay = document.getElementById('loading-overlay');
+    const shareBtn = document.getElementById('share-btn');
+    const historyList = document.getElementById('history-list');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
 
-    // --- Start Screen Logic ---
+    // --- State Variables ---
+    let currentAnalysisData = null;
+
+    // --- Initial Setup ---
+    const setInitialState = () => {
+        resultsDiv.innerHTML = '<div class="initial-placeholder"><p>Your analysis will appear here.</p></div>';
+        loadHistory();
+    };
+
+    // --- Start Screen ---
     startBtn.addEventListener('click', () => {
         startScreen.classList.add('hidden');
         mainContainer.classList.add('visible');
-        setTimeout(() => {
-            mainContainer.classList.add('loaded');
-        }, 500);
+        setTimeout(() => mainContainer.classList.add('loaded'), 500);
     });
 
     // --- Voice Input (Web Speech API) ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
-    let isRecording = false;
-
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.continuous = true;
@@ -41,63 +43,44 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-            isRecording = true;
             micBtn.classList.add('recording');
             micBtn.title = 'Stop Recording';
             textInput.placeholder = 'Listening...';
         };
-
         recognition.onend = () => {
-            isRecording = false;
             micBtn.classList.remove('recording');
             micBtn.title = 'Use Voice Input';
             textInput.placeholder = 'Enter text or use the microphone...';
         };
-
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
             if (event.error === 'not-allowed') {
                 alert('Microphone access was denied. Please allow microphone access in your browser settings.');
             }
         };
-
         recognition.onresult = (event) => {
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
+                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
             }
             textInput.value += finalTranscript;
         };
-
         micBtn.addEventListener('click', () => {
-            if (isRecording) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
+            if (micBtn.classList.contains('recording')) recognition.stop();
+            else recognition.start();
         });
-
     } else {
         console.warn('Speech Recognition not supported in this browser.');
         micBtn.disabled = true;
-        micBtn.title = 'Voice input not supported in your browser';
+        micBtn.title = 'Voice input not supported';
     }
 
-
-    // --- Analyzer Logic ---
+    // --- Main Analysis Logic ---
     analyzeBtn.addEventListener('click', async () => {
         const text = textInput.value.trim();
         if (!text) return;
 
-        // --- Reset UI from previous analysis ---
-        resultContainer.classList.remove('visible');
-        shamingContainer.classList.remove('visible');
-        resultsDiv.innerHTML = '';
-        shamingLine.textContent = '';
-
-        // --- Start Loading State ---
+        resetUIForAnalysis();
         mainContainer.classList.add('loading');
         loadingOverlay.classList.add('visible');
 
@@ -107,44 +90,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text }),
             });
-
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Analysis failed');
 
-            if (response.ok) {
-                // Display all results at once
-                displayShamingAndConsequences(data);
-                displayResults(data);
-                resultContainer.classList.add('visible');
-            } else {
-                throw new Error(data.error || 'Analysis failed');
-            }
+            currentAnalysisData = data;
+            saveToHistory(text, data);
+            displayShamingAndConsequences(data);
+            displayResults(data);
+            resultContainer.classList.add('visible');
+            shareBtn.classList.add('visible');
+
         } catch (error) {
             console.error('Error:', error);
             displayError(error.message);
         } finally {
-            // --- End Loading State ---
             mainContainer.classList.remove('loading');
             loadingOverlay.classList.remove('visible');
         }
     });
 
-    function displayResults(data) {
-        resultsDiv.innerHTML = ''; // Clear any previous results or loading indicators
-        const fixedCategories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', 'parental_disapproval'];
-        fixedCategories.forEach(category => {
-            if (data[category]) {
-                createCategoryResult(category, data[category]);
+    // --- UI Display Functions ---
+    const resetUIForAnalysis = () => {
+        resultContainer.classList.remove('visible');
+        shamingContainer.classList.remove('visible');
+        shareBtn.classList.remove('visible', 'success');
+        shareBtn.querySelector('span').textContent = 'Share Results';
+        resultsDiv.innerHTML = '';
+        shamingLine.textContent = '';
+        currentAnalysisData = null;
+    };
+
+    const displayResults = (data) => {
+        resultsDiv.innerHTML = '';
+        const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', 'parental_disapproval', ...data.other_minorities?.map(m => m.group) || []];
+
+        categories.forEach((category, index) => {
+            const categoryData = data[category] || data.other_minorities.find(m => m.group === category);
+            if (categoryData) {
+                const resultElement = createCategoryResult(category, categoryData);
+                resultElement.style.animationDelay = `${index * 100}ms`;
+                resultsDiv.appendChild(resultElement);
             }
         });
+    };
 
-        if (data.other_minorities && data.other_minorities.length > 0) {
-            data.other_minorities.forEach(minorityData => {
-                createCategoryResult(minorityData.group, minorityData, true);
-            });
-        }
-    }
-
-    function createCategoryResult(title, data) {
+    const createCategoryResult = (title, data) => {
         const resultElement = document.createElement('div');
         resultElement.classList.add('category-result');
         const categoryTitle = title.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -152,63 +142,103 @@ document.addEventListener('DOMContentLoaded', () => {
         resultElement.innerHTML = `
             <div class="category-header">
                 <h3 class="category-title">${categoryTitle}</h3>
-                <button class="reason-btn">?</button>
+                <button class="reason-btn" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
             </div>
             <div class="score-section">
-                <div class="score-display">
-                    <span class="score-label">AI Score</span>
-                    <div class="score-container">
-                        <div class="score-bar" style="width: 0%;"></div>
-                    </div>
-                    <span class="score-percentage">${data.ai_score}%</span>
-                </div>
-                <div class="score-display">
-                    <span class="score-label">Potential</span>
-                    <div class="score-container">
-                        <div class="score-bar" style="width: 0%;"></div>
-                    </div>
-                    <span class="score-percentage">${data.potential_score}%</span>
-                </div>
+                <div class="score-display"><span class="score-label">AI Score</span><div class="score-container"><div class="score-bar" style="width: ${data.ai_score}%;"></div></div><span class="score-percentage">${data.ai_score}%</span></div>
+                <div class="score-display"><span class="score-label">Potential</span><div class="score-container"><div class="score-bar" style="width: ${data.potential_score}%;"></div></div><span class="score-percentage">${data.potential_score}%</span></div>
             </div>
             <p class="reason-text">${data.reason}</p>
         `;
-        resultsDiv.appendChild(resultElement);
-
-        setTimeout(() => {
-            const scoreBars = resultElement.querySelectorAll('.score-bar');
-            scoreBars[0].style.width = `${data.ai_score}%`;
-            scoreBars[1].style.width = `${data.potential_score}%`;
-        }, 100);
 
         const reasonBtn = resultElement.querySelector('.reason-btn');
         const reasonText = resultElement.querySelector('.reason-text');
         reasonBtn.addEventListener('click', () => {
+            const isExpanded = reasonBtn.getAttribute('aria-expanded') === 'true';
+            reasonBtn.setAttribute('aria-expanded', !isExpanded);
+            reasonBtn.classList.toggle('expanded');
             reasonText.classList.toggle('visible');
         });
-    }
 
-    function displayShamingAndConsequences(data) {
-        // Update shaming line
-        if(data.shaming_line) {
-            shamingLine.style.color = 'var(--accent-color)';
+        return resultElement;
+    };
+
+    const displayShamingAndConsequences = (data) => {
+        if (data.shaming_line) {
             shamingLine.textContent = data.shaming_line;
             shamingContainer.classList.add('visible');
-        } else {
-            shamingContainer.classList.remove('visible');
         }
-
-        // Update consequences
         if (data.hasOwnProperty('probability_beaten_up') && data.hasOwnProperty('probability_cancelled')) {
             beatenUpProbEl.textContent = `${data.probability_beaten_up}%`;
             cancelledProbEl.textContent = `${data.probability_cancelled}%`;
         }
-    }
+    };
 
-    function displayError(errorMessage) {
-        // Display error in the shaming container for consistency
-        shamingLine.textContent = `Error: ${errorMessage}`;
-        shamingLine.style.color = 'var(--error-color)';
-        shamingContainer.classList.add('visible');
-        resultContainer.classList.remove('visible');
-    }
+    const displayError = (errorMessage) => {
+        resultsDiv.innerHTML = `<div class="error-message-box"><p><strong>Analysis Failed</strong></p><p>${errorMessage}</p></div>`;
+        resultContainer.classList.add('visible');
+        shamingContainer.classList.remove('visible');
+    };
+
+    // --- Share Functionality ---
+    shareBtn.addEventListener('click', () => {
+        if (!currentAnalysisData) return;
+        const { shaming_line, probability_beaten_up, probability_cancelled } = currentAnalysisData;
+        const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at [Your Website Link Here]!`;
+
+        navigator.clipboard.writeText(shareText).then(() => {
+            shareBtn.classList.add('success');
+            shareBtn.querySelector('span').textContent = 'Copied!';
+            setTimeout(() => {
+                shareBtn.classList.remove('success');
+                shareBtn.querySelector('span').textContent = 'Share Results';
+            }, 2000);
+        });
+    });
+
+    // --- History Functionality ---
+    const getHistory = () => JSON.parse(localStorage.getItem('offenseHistory')) || [];
+    const saveHistory = (history) => localStorage.setItem('offenseHistory', JSON.stringify(history));
+
+    const saveToHistory = (text, data) => {
+        let history = getHistory();
+        history.unshift({ text, data, date: new Date().toISOString() });
+        if (history.length > 10) history.pop(); // Keep only the last 10
+        saveHistory(history);
+        loadHistory();
+    };
+
+    const loadHistory = () => {
+        historyList.innerHTML = '';
+        const history = getHistory();
+        if (history.length === 0) {
+            historyList.innerHTML = '<p class="no-history">No past analyses found.</p>';
+            return;
+        }
+        history.forEach(item => {
+            const historyItem = document.createElement('div');
+            historyItem.classList.add('history-item');
+            historyItem.innerHTML = `<p class="history-text">${item.text}</p>`;
+            historyItem.addEventListener('click', () => {
+                textInput.value = item.text;
+                resetUIForAnalysis();
+                currentAnalysisData = item.data;
+                displayShamingAndConsequences(item.data);
+                displayResults(item.data);
+                resultContainer.classList.add('visible');
+                shareBtn.classList.add('visible');
+            });
+            historyList.appendChild(historyItem);
+        });
+    };
+
+    clearHistoryBtn.addEventListener('click', () => {
+        localStorage.removeItem('offenseHistory');
+        loadHistory();
+    });
+
+    // --- Initialize App ---
+    setInitialState();
 });
