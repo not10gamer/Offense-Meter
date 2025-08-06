@@ -68,8 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Start Screen ---
     startBtn.addEventListener('click', () => {
         startScreen.classList.add('hidden');
-        mainContainer.classList.add('visible');
-        setTimeout(() => mainContainer.classList.add('loaded'), 500);
+
+        startScreen.addEventListener('transitionend', () => {
+            mainContainer.classList.add('visible');
+            setTimeout(() => mainContainer.classList.add('loaded'), 50);
+        }, { once: true });
     });
 
     // --- Voice Input ---
@@ -142,14 +145,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (offenseChart) offenseChart.destroy();
 
         textInput.classList.remove('highlighted');
-        textInput.disabled = false; // Fix: Ensure textarea is enabled on reset
+        textInput.disabled = false;
         highlightedOutput.innerHTML = '';
         editTextBtn.classList.remove('visible');
     };
 
     editTextBtn.addEventListener('click', () => {
         textInput.classList.remove('highlighted');
-        textInput.disabled = false; // Fix: Enable textarea for editing
+        textInput.disabled = false;
         highlightedOutput.innerHTML = '';
         editTextBtn.classList.remove('visible');
         textInput.focus();
@@ -157,10 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const highlightProblematicText = (originalText, wordsToHighlight) => {
         if (!wordsToHighlight || wordsToHighlight.length === 0) {
-            // Even if no words, show the output view
             highlightedOutput.innerHTML = originalText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             textInput.classList.add('highlighted');
-            textInput.disabled = true; // Fix: Disable textarea to prevent invisible typing
+            textInput.disabled = true;
             editTextBtn.classList.add('visible');
             return;
         };
@@ -174,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         highlightedOutput.innerHTML = highlightedHTML;
         textInput.classList.add('highlighted');
-        textInput.disabled = true; // Fix: Disable textarea to prevent invisible typing
+        textInput.disabled = true;
         editTextBtn.classList.add('visible');
     };
 
@@ -183,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', 'parental_disapproval', ...data.other_minorities?.map(m => m.group) || []];
 
         categories.forEach((category, index) => {
-            // Fix: Use optional chaining on data.other_minorities to prevent error
             const categoryData = data[category] || data.other_minorities?.find(m => m.group === category);
             if (categoryData) {
                 const resultElement = createCategoryResult(category, categoryData);
