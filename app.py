@@ -26,26 +26,26 @@ def analyze():
     text = request.json['text']
 
     prompt = f"""
-    Analyze the following text for multiple categories of offense. Your entire response must be a single, valid JSON object.
+    Analyze the following text for multiple categories of offense. Your entire response must be a single, valid JSON object, ensuring every requested field is present even if the text is harmless.
 
     Text: "{text}"
 
     1.  **Categorical Analysis**:
-        -   For each of the main categories ("racism", "sexism", "homophobia", "religious_blasphemy", "parental_disapproval"), provide an object with:
-            -   `ai_score`: An integer from 0-100 for your direct assessment of offensiveness.
-            -   `potential_score`: An integer from 0-100 for how the most sensitive audience might perceive it.
-            -   `reason`: A single, brief explanation for the scores.
-        -   Include a key named "other_minorities", an array of objects for any other groups, each with "group", `ai_score`, `potential_score`, and `reason`. Do not include "LGBTQ+".
+        -   For each of the main categories ("racism", "sexism", "homophobia", "religious_blasphemy", "parental_disapproval"), you must provide an object with:
+            -   `ai_score`: An integer from 0-100. If harmless, this must be 0.
+            -   `potential_score`: An integer from 0-100. If harmless, this must be 0.
+            -   `reason`: A single, brief explanation. For harmless text, state "This text is not offensive."
+        -   Include a key named "other_minorities", an array of objects for any other groups. If none, you must return an empty array [].
 
     2.  **Summary & Consequences**:
-        -   `shaming_line`: A short, witty, and shaming line to the user based on the scores.
-        -   `probability_beaten_up`: An integer from 0-100.
-        -   `probability_cancelled`: An integer from 0-100.
+        -   `shaming_line`: A short, witty line. For harmless text, you must provide a positive or neutral comment like "Perfectly fine!" or "A model of inoffensive conversation."
+        -   `probability_beaten_up`: An integer from 0-100. Must be 0 for harmless text.
+        -   `probability_cancelled`: An integer from 0-100. Must be 0 for harmless text.
 
     3.  **History & Highlighting**:
-        -   `history_summary`: A very short, one-to-ten word summary of the text's theme.
-        -   `conversational_reception_score`: An integer from 0-100 (100 = very well received).
-        -   `problematic_words`: An array of the specific words or short phrases from the original text that contributed most to the offense scores. Return an empty array if none are found.
+        -   `history_summary`: A very short, one-to-ten word summary of the text's theme (e.g., "A simple greeting.").
+        -   `conversational_reception_score`: An integer from 0-100 (100 = very well received). For harmless text, this must be 100.
+        -   `problematic_words`: An array of the specific words from the text that contributed to offense scores. If none, you must return an empty array [].
 
     **Formatting Rules**:
     -   All scores and probabilities must be specific integers (e.g., 27, 83, 91, not 25, 80, 90).
