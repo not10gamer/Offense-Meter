@@ -142,12 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (offenseChart) offenseChart.destroy();
 
         textInput.classList.remove('highlighted');
+        textInput.disabled = false; // Fix: Ensure textarea is enabled on reset
         highlightedOutput.innerHTML = '';
         editTextBtn.classList.remove('visible');
     };
 
     editTextBtn.addEventListener('click', () => {
         textInput.classList.remove('highlighted');
+        textInput.disabled = false; // Fix: Enable textarea for editing
         highlightedOutput.innerHTML = '';
         editTextBtn.classList.remove('visible');
         textInput.focus();
@@ -155,8 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const highlightProblematicText = (originalText, wordsToHighlight) => {
         if (!wordsToHighlight || wordsToHighlight.length === 0) {
+            // Even if no words, show the output view
             highlightedOutput.innerHTML = originalText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             textInput.classList.add('highlighted');
+            textInput.disabled = true; // Fix: Disable textarea to prevent invisible typing
             editTextBtn.classList.add('visible');
             return;
         };
@@ -170,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         highlightedOutput.innerHTML = highlightedHTML;
         textInput.classList.add('highlighted');
+        textInput.disabled = true; // Fix: Disable textarea to prevent invisible typing
         editTextBtn.classList.add('visible');
     };
 
@@ -178,7 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', 'parental_disapproval', ...data.other_minorities?.map(m => m.group) || []];
 
         categories.forEach((category, index) => {
-            const categoryData = data[category] || data.other_minorities.find(m => m.group === category);
+            // Fix: Use optional chaining on data.other_minorities to prevent error
+            const categoryData = data[category] || data.other_minorities?.find(m => m.group === category);
             if (categoryData) {
                 const resultElement = createCategoryResult(category, categoryData);
                 resultElement.style.animationDelay = `${index * 100}ms`;
@@ -197,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="category-header">
                 <h3 class="category-title">${categoryTitle}</h3>
                 <button class="reason-btn" aria-expanded="false">
-                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
             </div>
             <div class="score-section">
