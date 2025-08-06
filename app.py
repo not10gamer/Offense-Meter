@@ -26,32 +26,30 @@ def analyze():
     text = request.json['text']
 
     prompt = f"""
-    Analyze the following text for multiple categories of offense. For each category, provide two scores and a single reason.
-    1.  `ai_score`: A score from 0-100 representing your direct assessment of how offensive the text is.
-    2.  `potential_score`: A score from 0-100 representing how offensive the text *could be perceived* by the most sensitive audience for that category.
-    3.  `reason`: A single explanation for both scores.
+    Analyze the following text for multiple categories of offense. Your entire response must be a single, valid JSON object.
 
     Text: "{text}"
 
-    Return the response as a JSON object. The keys should be "racism", "sexism", "homophobia", "religious_blasphemy", and "parental_disapproval".
-    Each key's value should be an object containing `ai_score`, `potential_score`, and `reason`.
+    1.  **Categorical Analysis**:
+        -   For each of the main categories ("racism", "sexism", "homophobia", "religious_blasphemy", "parental_disapproval"), provide an object with:
+            -   `ai_score`: An integer from 0-100 for your direct assessment of offensiveness.
+            -   `potential_score`: An integer from 0-100 for how the most sensitive audience might perceive it.
+            -   `reason`: A single, brief explanation for the scores.
+        -   Include a key named "other_minorities", an array of objects for any other groups, each with "group", `ai_score`, `potential_score`, and `reason`. Do not include "LGBTQ+".
 
-    Also include a key named "other_minorities", which should be an array of objects. Each object in the array should have "group", `ai_score`, `potential_score`, and `reason` keys.
-    Do not include "LGBTQ+" in the "other_minorities" array, as it is already covered by the "homophobia" category.
+    2.  **Summary & Consequences**:
+        -   `shaming_line`: A short, witty, and shaming line to the user based on the scores.
+        -   `probability_beaten_up`: An integer from 0-100.
+        -   `probability_cancelled`: An integer from 0-100.
 
-    Next, include a key named "shaming_line" with a short, witty, and shaming line to the user based on the scores. The line should get more intense as the scores increase.
+    3.  **History & Highlighting**:
+        -   `history_summary`: A very short, one-to-ten word summary of the text's theme.
+        -   `conversational_reception_score`: An integer from 0-100 (100 = very well received).
+        -   `problematic_words`: An array of the specific words or short phrases from the original text that contributed most to the offense scores. Return an empty array if none are found.
 
-    Then, add two more keys at the top level of the JSON object:
-    1. "probability_beaten_up": An integer from 0-100 representing the probability of the user being physically assaulted in public for saying this.
-    2. "probability_cancelled": An integer from 0-100 representing the probability of the user being "cancelled" on social media for saying this.
-
-    Finally, add these two keys for the history feature:
-    1. "history_summary": A very short, one-to-ten word summary of what the AI thinks of the work.
-    2. "conversational_reception_score": An integer from 0-100 indicating how well the text would be received in a typical conversation (where 100 is very well and 0 is very poorly).
-
-    Important: When generating all scores and probabilities, please use highly specific integers. Avoid rounding or defaulting to numbers that are multiples of 5 or 10 (e.g., use 27, 83, 91 instead of 25, 80, 90).
-
-    The entire output must be a single, valid JSON object.
+    **Formatting Rules**:
+    -   All scores and probabilities must be specific integers (e.g., 27, 83, 91, not 25, 80, 90).
+    -   The final output must be only the JSON object, with no markdown formatting like ```json.
     """
 
     try:
