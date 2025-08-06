@@ -26,30 +26,32 @@ def analyze():
     text = request.json['text']
 
     prompt = f"""
-    Analyze the following text for multiple categories of offense. Your entire response must be a single, valid JSON object, ensuring every requested field is present even if the text is harmless.
+    Analyze the following text for multiple categories of offense. For each category, provide two scores and a single reason.
+    1.  `ai_score`: A score from 0-100 representing your direct assessment of how offensive the text is.
+    2.  `potential_score`: A score from 0-100 representing how offensive the text *could be perceived* by the most sensitive audience for that category.
+    3.  `reason`: A single explanation for both scores.
 
     Text: "{text}"
 
-    1.  **Categorical Analysis**:
-        -   For each of the main categories ("racism", "sexism", "homophobia", "religious_blasphemy", "parental_disapproval"), you must provide an object with:
-            -   `ai_score`: An integer from 0-100. If harmless, this must be 0.
-            -   `potential_score`: An integer from 0-100. If harmless, this must be 0.
-            -   `reason`: A single, brief explanation. For harmless text, state "This text is not offensive."
-        -   Include a key named "other_minorities", an array of objects for any other groups. If none, you must return an empty array [].
+    Return the response as a JSON object. The keys should be "racism", "sexism", "homophobia", "religious_blasphemy", and "parental_disapproval".
+    Each key's value should be an object containing `ai_score`, `potential_score`, and `reason`.
 
-    2.  **Summary & Consequences**:
-        -   `shaming_line`: A short, witty line. For harmless text, you must provide a positive or neutral comment like "Perfectly fine!" or "A model of inoffensive conversation."
-        -   `probability_beaten_up`: An integer from 0-100. Must be 0 for harmless text.
-        -   `probability_cancelled`: An integer from 0-100. Must be 0 for harmless text.
+    Also include a key named "other_minorities", which should be an array of objects. Each object in the array should have "group", `ai_score`, `potential_score`, and `reason` keys.
+    Do not include "LGBTQ+" in the "other_minorities" array, as it is already covered by the "homophobia" category.
 
-    3.  **History & Highlighting**:
-        -   `history_summary`: A very short, one-to-ten word summary of the text's theme (e.g., "A simple greeting.").
-        -   `conversational_reception_score`: An integer from 0-100 (100 = very well received). For harmless text, this must be 100.
-        -   `problematic_words`: An array of the specific words from the text that contributed to offense scores. If none, you must return an empty array [].
+    Next, include a key named "shaming_line" with a short, witty, and shaming line to the user based on the scores. The line should get more intense as the scores increase.
 
-    **Formatting Rules**:
-    -   All scores and probabilities must be specific integers (e.g., 27, 83, 91, not 25, 80, 90).
-    -   The final output must be only the JSON object, with no markdown formatting like ```json.
+    Then, add two more keys at the top level of the JSON object:
+    1. "probability_beaten_up": An integer from 0-100 representing the probability of the user being physically assaulted in public for saying this.
+    2. "probability_cancelled": An integer from 0-100 representing the probability of the user being "cancelled" on social media for saying this.
+
+    Finally, add these two keys for the history feature:
+    1. "history_summary": A very short, one-to-ten word summary of what the AI thinks of the work.
+    2. "conversational_reception_score": An integer from 0-100 indicating how well the text would be received in a typical conversation (where 100 is very well and 0 is very poorly).
+
+    Important: When generating all scores and probabilities, please use highly specific integers. Avoid rounding or defaulting to numbers that are multiples of 5 or 10 (e.g., use 27, 83, 91 instead of 25, 80, 90).
+
+    The entire output must be a single, valid JSON object.
     """
 
     try:
