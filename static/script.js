@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     shareBtn.addEventListener('click', () => {
         if (!currentAnalysisData) return;
         const { shaming_line, probability_beaten_up, probability_cancelled } = currentAnalysisData;
-        const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at [Your Website Link Here]!`;
+        const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at https://offensive-meter.onrender.com!`;
 
         navigator.clipboard.writeText(shareText).then(() => {
             shareBtn.classList.add('success');
@@ -218,10 +218,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         history.forEach(item => {
+            const historyItemContainer = document.createElement('div');
+            historyItemContainer.classList.add('history-item-container');
+
             const historyItem = document.createElement('div');
             historyItem.classList.add('history-item');
-            historyItem.innerHTML = `<p class="history-text">${item.text}</p>`;
-            historyItem.addEventListener('click', () => {
+            historyItem.innerHTML = `
+                <p class="history-text">${item.text}</p>
+                <button class="view-summary-btn">View Summary</button>
+            `;
+
+            const summaryContent = document.createElement('div');
+            summaryContent.classList.add('history-summary-content');
+            summaryContent.innerHTML = `
+                <p class="summary-line"><strong>AI Summary:</strong> ${item.data.history_summary}</p>
+                <p class="summary-line"><strong>Reception Score:</strong> ${item.data.conversational_reception_score}/100</p>
+            `;
+
+            historyItemContainer.appendChild(historyItem);
+            historyItemContainer.appendChild(summaryContent);
+            historyList.appendChild(historyItemContainer);
+
+            const summaryBtn = historyItem.querySelector('.view-summary-btn');
+            summaryBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent the main item click event
+                summaryContent.classList.toggle('visible');
+            });
+
+            // This event listener is for clicking the main part of the history item
+            historyItem.querySelector('.history-text').addEventListener('click', () => {
                 textInput.value = item.text;
                 resetUIForAnalysis();
                 currentAnalysisData = item.data;
@@ -230,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 resultContainer.classList.add('visible');
                 shareBtn.classList.add('visible');
             });
-            historyList.appendChild(historyItem);
         });
     };
 
