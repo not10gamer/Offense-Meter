@@ -41,9 +41,13 @@ def analyze():
 
     Next, include a key named "shaming_line" with a short, witty, and shaming line to the user based on the scores. The line should get more intense as the scores increase.
 
-    Finally, add two more keys at the top level of the JSON object:
+    Then, add two more keys at the top level of the JSON object:
     1. "probability_beaten_up": An integer from 0-100 representing the probability of the user being physically assaulted in public for saying this.
     2. "probability_cancelled": An integer from 0-100 representing the probability of the user being "cancelled" on social media for saying this.
+
+    Finally, add these two keys for the history feature:
+    1. "history_summary": A very short, one-to-ten word summary of what the AI thinks of the work.
+    2. "conversational_reception_score": An integer from 0-100 indicating how well the text would be received in a typical conversation (where 100 is very well and 0 is very poorly).
 
     Important: When generating all scores and probabilities, please use highly specific integers. Avoid rounding or defaulting to numbers that are multiples of 5 or 10 (e.g., use 27, 83, 91 instead of 25, 80, 90).
 
@@ -54,7 +58,6 @@ def analyze():
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         response = model.generate_content(prompt)
 
-        # A simple way to clean potential markdown formatting
         clean_response_text = response.text.strip().lstrip('```json').rstrip('```')
 
         data = json.loads(clean_response_text)
