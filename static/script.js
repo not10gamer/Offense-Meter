@@ -114,6 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text }),
             });
+
+            // Fix: Check if the response is JSON before trying to parse it.
+            // This prevents the "Unexpected token '<'" error if the server returns an HTML error page.
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const errorText = await response.text();
+                console.error("Server returned non-JSON response:", errorText);
+                throw new Error("The server returned an unexpected response. Please try again.");
+            }
+
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Analysis failed');
 
