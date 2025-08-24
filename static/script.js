@@ -1,17 +1,25 @@
+'use strict';
+
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Global Error Handler ---
+    window.addEventListener('error', function(e) {
+        console.warn('JavaScript error caught:', e.message, 'at', e.filename, ':', e.lineno);
+        return true;
+    });
+
     // --- Main App Initializers ---
     const initializeApp = () => {
-        // Show the main container after splash screen
-        mainContainer.classList.add('visible');
-        setTimeout(() => mainContainer.classList.add('loaded'), 500);
-
-        // Initialize interactive elements
-        initializeCursor();
-        initializeButtonHoverEffect();
+        const mainContainer = document.getElementById('main-container');
+        if (mainContainer) {
+            mainContainer.classList.add('visible');
+            setTimeout(() => mainContainer.classList.add('loaded'), 500);
+        }
+        initializeInteractiveEffects();
+        initializeRippleEffect();
+        setInitialState();
     };
 
     // --- Element Selectors ---
-    const mainContainer = document.getElementById('main-container');
     const textInput = document.getElementById('text-input');
     const analyzeBtn = document.getElementById('analyze-btn');
     const resultContainer = document.getElementById('result-container');
@@ -25,19 +33,98 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareBtn = document.getElementById('share-btn');
     const historyList = document.getElementById('history-list');
     const clearHistoryBtn = document.getElementById('clear-history-btn');
+    const mainContainer = document.getElementById('main-container');
 
     // --- State Variables ---
     let currentAnalysisData = null;
 
     // --- Initial Setup ---
     const setInitialState = () => {
-        resultsDiv.innerHTML = '<div class="initial-placeholder"><p>Your analysis will appear here.</p></div>';
+        if (resultsDiv) {
+            resultsDiv.innerHTML = '<div class="initial-placeholder"><p>Your analysis will appear here.</p></div>';
+        }
         loadHistory();
     };
 
-    // --- REMOVED: Start Screen Logic ---
+    // --- ADDED: Procedural Background from example.html ---
+    function initializeProceduralBackground() {
+        const canvas = document.getElementById('procedural-background');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let blobs = [];
+        const blobCount = 5;
 
-    // --- ADDED: Splash Screen, Particles, Cursor, Hovers ---
+        const setCanvasDimensions = () => {
+            canvas.width = window.innerWidth;
+            // Make it cover the full scroll height
+            canvas.height = document.body.scrollHeight;
+        };
+
+        // Recalculate on resize and also on content changes that might affect scrollHeight
+        window.addEventListener('resize', setCanvasDimensions);
+        new MutationObserver(setCanvasDimensions).observe(document.body, { childList: true, subtree: true });
+
+
+        class Blob {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.radius = Math.random() * 400 + 400; // smaller blobs
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.maxLife = Math.random() * 800 + 1000;
+                this.life = this.maxLife;
+                this.alpha = 0;
+                this.hueStart = Math.random() * 90 + 240;
+                this.hueRange = 30;
+                this.color = { h: this.hueStart, s: 70, l: 50 };
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                if (this.x + this.radius > canvas.width || this.x - this.radius < 0) this.vx *= -1;
+                if (this.y + this.radius > canvas.height || this.y - this.radius < 0) this.vy *= -1;
+                const lifeProgress = (this.maxLife - this.life) / this.maxLife;
+                this.color.h = this.hueStart + Math.sin(lifeProgress * Math.PI) * this.hueRange;
+                this.alpha = 0.15 * Math.sin(lifeProgress * Math.PI); // more subtle
+            }
+            draw() {
+                ctx.beginPath();
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                const colorString = `hsla(${this.color.h}, ${this.color.s}%, ${this.color.l}%, ${this.alpha})`;
+                const transparentString = `hsla(${this.color.h}, ${this.color.s}%, ${this.color.l}%, 0)`;
+                gradient.addColorStop(0, colorString);
+                gradient.addColorStop(1, transparentString);
+                ctx.fillStyle = gradient;
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        function createBlobs() {
+            blobs = [];
+            for (let i = 0; i < blobCount; i++) {
+                blobs.push(new Blob());
+            }
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            blobs.forEach((blob, index) => {
+                blob.update();
+                blob.draw();
+                if (blob.life <= 0) {
+                    blobs[index] = new Blob();
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+        setCanvasDimensions();
+        createBlobs();
+        animate();
+    }
+
+
+    // --- OLD Splash Screen Logic ---
     const initializeParticleCanvas = () => {
         const canvas = document.getElementById('particle-canvas');
         if (!canvas) return;
@@ -78,48 +165,119 @@ document.addEventListener('DOMContentLoaded', () => {
         startFirstReveal();
     };
 
-    const initializeCursor = () => {
-        const cursorDot = document.querySelector('.cursor-dot'); const cursorAura = document.querySelector('.cursor-aura'); if (!cursorDot || !cursorAura) return;
-        window.addEventListener('mousemove', e => { const { clientX, clientY } = e; cursorDot.style.left = `${clientX}px`; cursorDot.style.top = `${clientY}px`; cursorAura.style.left = `${clientX}px`; cursorAura.style.top = `${clientY}px`; });
-        const interactiveElements = document.querySelectorAll('a, button, .text-input');
-        interactiveElements.forEach(el => { el.addEventListener('mouseenter', () => { cursorDot.classList.add('hovered'); cursorAura.classList.add('hovered'); }); el.addEventListener('mouseleave', () => { cursorDot.classList.remove('hovered'); cursorAura.classList.remove('hovered'); }); });
-    };
 
-    const initializeButtonHoverEffect = () => {
-        const buttons = document.querySelectorAll('.analyze-btn, .share-btn, .clear-history-btn, .view-summary-btn, .mic-btn');
-        buttons.forEach(button => { button.addEventListener('mousemove', e => { const rect = button.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; button.style.setProperty('--x', `${x}px`); button.style.setProperty('--y', `${y}px`); }); });
-    };
+    // --- NEW: Cursor and Interactive Effects from example.html ---
+    function initializeInteractiveEffects() {
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorAura = document.querySelector('.cursor-aura');
+        if (!cursorDot || !cursorAura) return;
+
+        let mouseX = 0, mouseY = 0;
+        let auraX = 0, auraY = 0;
+        const lagAmount = 0.2;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        const animateEffects = () => {
+            auraX += (mouseX - auraX) * lagAmount;
+            auraY += (mouseY - auraY) * lagAmount;
+            cursorDot.style.transform = `translate(${mouseX - (cursorDot.offsetWidth / 2)}px, ${mouseY - (cursorDot.offsetHeight / 2)}px)`;
+            cursorAura.style.transform = `translate(${auraX - (cursorAura.offsetWidth / 2)}px, ${auraY - (cursorAura.offsetHeight / 2)}px)`;
+            requestAnimationFrame(animateEffects);
+        };
+        animateEffects();
+
+        const interactiveElements = document.querySelectorAll('a, button, .text-input, .history-item');
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorDot.classList.add('hovered');
+                cursorAura.classList.add('hovered');
+            });
+            el.addEventListener('mouseleave', () => {
+                cursorDot.classList.remove('hovered');
+                cursorAura.classList.remove('hovered');
+            });
+        });
+    }
+
+    // --- NEW: Ripple effect on buttons ---
+    function initializeRippleEffect() {
+        const buttons = document.querySelectorAll('.cta-primary, .cta-secondary, .mic-btn');
+
+        buttons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                const rect = button.getBoundingClientRect();
+                
+                // Create span element
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+
+                // Set size based on button's largest dimension
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = `${size}px`;
+
+                // Calculate position
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                
+                // Remove any existing ripple
+                const existingRipple = button.querySelector('.ripple');
+                if (existingRipple) {
+                    existingRipple.remove();
+                }
+                
+                // Add the ripple to the button
+                this.appendChild(ripple);
+
+                // Clean up after animation
+                ripple.addEventListener('animationend', () => {
+                    if(ripple) {
+                        ripple.remove();
+                    }
+                });
+            });
+        });
+    }
 
     // --- Voice Input (Web Speech API) ---
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition;
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
-        recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.title = 'Stop Recording'; textInput.placeholder = 'Listening...'; };
-        recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.title = 'Use Voice Input'; textInput.placeholder = 'Enter text or use the microphone...'; };
-        recognition.onerror = (event) => { console.error('Speech recognition error:', event.error); if (event.error === 'not-allowed') { alert('Microphone access was denied. Please allow microphone access in your browser settings.'); } };
-        recognition.onresult = (event) => { let finalTranscript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; } textInput.value += finalTranscript; };
-        micBtn.addEventListener('click', () => { if (micBtn.classList.contains('recording')) recognition.stop(); else recognition.start(); });
-    } else { console.warn('Speech Recognition not supported in this browser.'); micBtn.disabled = true; micBtn.title = 'Voice input not supported'; }
+    if (micBtn) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+            recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.title = 'Stop Recording'; textInput.placeholder = 'Listening...'; };
+            recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.title = 'Use Voice Input'; textInput.placeholder = 'Enter text or use the microphone...'; };
+            recognition.onerror = (event) => { console.error('Speech recognition error:', event.error); if (event.error === 'not-allowed') { alert('Microphone access was denied. Please allow microphone access in your browser settings.'); } };
+            recognition.onresult = (event) => { let finalTranscript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; } textInput.value += finalTranscript; };
+            micBtn.addEventListener('click', () => { if (micBtn.classList.contains('recording')) recognition.stop(); else recognition.start(); });
+        } else { console.warn('Speech Recognition not supported in this browser.'); micBtn.disabled = true; micBtn.title = 'Voice input not supported'; }
+    }
 
     // --- Main Analysis Logic ---
-    analyzeBtn.addEventListener('click', async () => {
-        const text = textInput.value.trim(); if (!text) return;
-        resetUIForAnalysis(); mainContainer.classList.add('loading'); loadingOverlay.classList.add('visible');
-        try {
-            const response = await fetch('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), });
-            const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Analysis failed');
-            currentAnalysisData = data; saveToHistory(text, data); displayShamingAndConsequences(data); displayResults(data); resultContainer.classList.add('visible'); shareBtn.classList.add('visible');
-        } catch (error) { console.error('Error:', error); displayError(error.message); } finally { mainContainer.classList.remove('loading'); loadingOverlay.classList.remove('visible'); }
-    });
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim(); if (!text) return;
+            resetUIForAnalysis(); mainContainer.classList.add('loading'); loadingOverlay.classList.add('visible');
+            try {
+                const response = await fetch('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), });
+                const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Analysis failed');
+                currentAnalysisData = data; saveToHistory(text, data); displayShamingAndConsequences(data); displayResults(data); resultContainer.classList.add('visible'); shareBtn.classList.add('visible');
+            } catch (error) { console.error('Error:', error); displayError(error.message); } finally { mainContainer.classList.remove('loading'); loadingOverlay.classList.remove('visible'); }
+        });
+    }
 
     // --- UI Display Functions ---
     const resetUIForAnalysis = () => {
         resultContainer.classList.remove('visible'); shamingContainer.classList.remove('visible'); shareBtn.classList.remove('visible', 'success'); shareBtn.querySelector('span').textContent = 'Share Results'; resultsDiv.innerHTML = ''; shamingLine.textContent = ''; currentAnalysisData = null;
     };
     const displayResults = (data) => {
-        resultsDiv.innerHTML = ''; const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', 'parental_disapproval', ...data.other_minorities?.map(m => m.group) || []];
+        resultsDiv.innerHTML = ''; const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', ...data.other_minorities?.map(m => m.group) || []];
         categories.forEach((category, index) => { const categoryData = data[category] || data.other_minorities.find(m => m.group === category); if (categoryData) { const resultElement = createCategoryResult(category, categoryData); resultElement.style.animationDelay = `${index * 100}ms`; resultsDiv.appendChild(resultElement); } });
     };
     const createCategoryResult = (title, data) => {
@@ -133,28 +291,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayError = (errorMessage) => { resultsDiv.innerHTML = `<div class="error-message-box"><p><strong>Analysis Failed</strong></p><p>${errorMessage}</p></div>`; resultContainer.classList.add('visible'); shamingContainer.classList.remove('visible'); };
 
     // --- Share Functionality ---
-    shareBtn.addEventListener('click', () => { if (!currentAnalysisData) return; const { shaming_line, probability_beaten_up, probability_cancelled } = currentAnalysisData; const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at https://offensive-meter.onrender.com!`; navigator.clipboard.writeText(shareText).then(() => { shareBtn.classList.add('success'); shareBtn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { shareBtn.classList.remove('success'); shareBtn.querySelector('span').textContent = 'Share Results'; }, 2000); }); });
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => { if (!currentAnalysisData) return; const { shaming_line, probability_beaten_up, probability_cancelled } = currentAnalysisData; const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at this website!`; navigator.clipboard.writeText(shareText).then(() => { shareBtn.classList.add('success'); shareBtn.querySelector('span').textContent = 'Copied!'; setTimeout(() => { shareBtn.classList.remove('success'); shareBtn.querySelector('span').textContent = 'Share Results'; }, 2000); }); });
+    }
 
     // --- History Functionality ---
     const getHistory = () => JSON.parse(localStorage.getItem('offenseHistory')) || [];
     const saveHistory = (history) => localStorage.setItem('offenseHistory', JSON.stringify(history));
     const saveToHistory = (text, data) => { let history = getHistory(); history.unshift({ text, data, date: new Date().toISOString() }); if (history.length > 10) history.pop(); saveHistory(history); loadHistory(); };
     const loadHistory = () => {
+        if (!historyList) return;
         historyList.innerHTML = ''; const history = getHistory(); if (history.length === 0) { historyList.innerHTML = '<p class="no-history">No past analyses found.</p>'; return; }
         history.forEach(item => {
             const historyItemContainer = document.createElement('div'); historyItemContainer.classList.add('history-item-container');
-            const historyItem = document.createElement('div'); historyItem.classList.add('history-item'); historyItem.innerHTML = `<p class="history-text">${item.text}</p><button class="view-summary-btn">View Summary</button>`;
+            const historyItem = document.createElement('div'); historyItem.classList.add('history-item'); historyItem.innerHTML = `<p class="history-text">${item.text}</p><button class="view-summary-btn cta-secondary">View Summary</button>`;
             const summaryContent = document.createElement('div'); summaryContent.classList.add('history-summary-content'); summaryContent.innerHTML = `<p class="summary-line"><strong>AI Summary:</strong> ${item.data.history_summary}</p><p class="summary-line"><strong>Reception Score:</strong> ${item.data.conversational_reception_score}/100</p>`;
-            historyItemContainer.appendChild(historyItem); historyItemContainer.appendChild(summaryContent); historyList.appendChild(historyItemContainer);
+            historyItemContainer.appendChild(historyItem);
+            historyItemContainer.appendChild(summaryContent);
+            historyList.appendChild(historyItemContainer);
             const summaryBtn = historyItem.querySelector('.view-summary-btn');
             summaryBtn.addEventListener('click', (e) => { e.stopPropagation(); summaryContent.classList.toggle('visible'); });
-            historyItem.querySelector('.history-text').addEventListener('click', () => { textInput.value = item.text; resetUIForAnalysis(); currentAnalysisData = item.data; displayShamingAndConsequences(item.data); displayResults(item.data); resultContainer.classList.add('visible'); shareBtn.classList.add('visible'); });
+            historyItem.querySelector('.history-text').addEventListener('click', () => { textInput.value = item.text; resetUIForAnalysis(); currentAnalysisData = item.data; displayShamingAndConsequences(item.data); displayResults(item.data); resultContainer.classList.add('visible'); shareBtn.classList.add('visible'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
         });
     };
-    clearHistoryBtn.addEventListener('click', () => { localStorage.removeItem('offenseHistory'); loadHistory(); });
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', () => { localStorage.removeItem('offenseHistory'); loadHistory(); });
+    }
 
     // --- Start App ---
+    initializeProceduralBackground();
     initializeParticleCanvas();
     initializeSplashScreen();
-    setInitialState();
 });
