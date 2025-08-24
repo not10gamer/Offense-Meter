@@ -7,7 +7,943 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /*================================================================================
+  IMPORTS & ROOT VARIABLES
+================================================================================*/
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --primary-color: #4F46E5;
+            --background-color: #0B0B0F;
+            --text-color: #FFFFFF;
+            --text-color-muted: #A9A9B3;
+            --card-bg: #121216;
+            --border-color: #3A3A40;
+            --accent-border-color: rgba(79, 70, 229, 0.3);
+            --error-color: #EF4444;
+            --success-color: #22c55e;
+        }
+
+        /*================================================================================
+  GENERAL & BODY STYLES
+================================================================================*/
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 4rem 2rem; /* Increased vertical padding */
+            overflow-x: hidden;
+            cursor: none;
+            position: relative;
+        }
+
+        /*================================================================================
+  BACKGROUND & DECORATIVE ELEMENTS
+================================================================================*/
+        #procedural-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, rgba(11, 11, 15, 0) 50%, rgba(11, 11, 15, 1) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .cursor-dot,
+        .cursor-aura {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s cubic-bezier(0.19, 1, 0.22, 1), height 0.4s cubic-bezier(0.19, 1, 0.22, 1), background-color 0.4s ease;
+        }
+
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary-color);
+        }
+
+        .cursor-aura {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(79, 70, 229, 0.1);
+            backdrop-filter: blur(2px);
+            border: 1px solid var(--accent-border-color);
+        }
+
+        .cursor-dot.hovered {
+            width: 12px;
+            height: 12px;
+        }
+
+        .cursor-aura.hovered {
+            width: 50px;
+            height: 50px;
+            background-color: rgba(79, 70, 229, 0.2);
+        }
+
+        /*================================================================================
+  SPLASH SCREEN
+================================================================================*/
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--background-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 1;
+            transition: opacity 1.5s ease-out;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: linear-gradient(to bottom, rgba(11, 11, 15, 0), rgba(11, 11, 15, 0) 49.5%, rgba(255, 255, 255, 0.05) 50%, rgba(11, 11, 15, 0) 50.5%, rgba(11, 11, 15, 0));
+            background-size: 100% 8px;
+            animation: scan 10s linear infinite;
+        }
+
+        #code-loader-wrapper {
+            position: relative;
+            z-index: 3;
+            animation: pulsate-glow 4s ease-in-out infinite;
+        }
+
+        #code-loader {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(1.5rem, 8vw, 5rem);
+            font-weight: 600;
+            color: var(--text-color);
+            letter-spacing: 0.05em;
+            white-space: pre;
+            text-align: center;
+            transition: opacity 0.4s ease-in-out, filter 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+
+        .is-blurring-out {
+            opacity: 0 !important;
+            filter: blur(8px);
+            transform: scale(0.9);
+        }
+
+        #wipe-transition {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary-color);
+            z-index: 10000;
+        }
+
+        #wipe-transition.animate {
+            animation: wipe-across 1.2s cubic-bezier(0.8, 0, 0.2, 1) forwards;
+        }
+
+        /*================================================================================
+  LAYOUT & CARD STYLES
+================================================================================*/
+        .main-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 3rem; /* Increased gap */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-out 0.4s, transform 0.4s ease;
+        }
+
+        .main-container.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .main-container.loading {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 28px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-border-color);
+            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.2);
+        }
+
+        .header {
+            text-align: center;
+        }
+
+        .header .title {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-color) 0%, var(--primary-color) 50%, var(--text-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-color-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /*================================================================================
+  FORM & INPUT STYLES
+================================================================================*/
+        .analyzer-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out 0.2s, transform 0.6s ease-out 0.2s;
+        }
+
+        .main-container.loaded .analyzer-section {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .text-input {
+            width: 100%;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            min-height: 150px;
+            resize: vertical;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--accent-border-color);
+        }
+
+        .controls-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        /*================================================================================
+  BUTTON STYLES
+================================================================================*/
+        .cta-primary,
+        .cta-secondary {
+            padding: 18px 40px;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, background-color 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .cta-primary:focus,
+        .cta-secondary:focus,
+        .mic-btn:focus,
+        .reason-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--accent-border-color);
+        }
+
+        .cta-primary span,
+        .cta-secondary span {
+            position: relative;
+            z-index: 2;
+            transition: color 0.4s ease;
+        }
+
+        .cta-primary::before,
+        .cta-secondary::before {
+            content: '';
+            position: absolute;
+            top: var(--y, 50%);
+            left: var(--x, 50%);
+            transform: translate(-50%, -50%) scale(0);
+            width: 300px;
+            height: 300px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        .cta-primary:hover::before,
+        .cta-secondary:hover::before {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .cta-primary {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.4);
+            flex-grow: 1;
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.5);
+        }
+
+        .cta-primary::before {
+            background-color: #fff;
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .cta-secondary:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(79, 70, 229, 0.25);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .cta-secondary.success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+            color: #fff;
+        }
+
+        .cta-secondary.success:hover {
+            color: #fff;
+        }
+
+        .mic-btn {
+            flex-shrink: 0;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color-muted);
+            border-radius: 50%;
+            width: 62px;
+            height: 62px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mic-btn:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: var(--text-color);
+            transform: translateY(-2px);
+        }
+
+        .mic-btn.recording {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+            color: var(--text-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        #clear-history-btn {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+
+        #clear-history-btn:hover {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+            color: #fff;
+        }
+
+        #clear-history-btn::before {
+            background-color: var(--error-color);
+        }
+
+        /*================================================================================
+  RESULTS & ANALYSIS STYLES
+================================================================================*/
+        .content-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 3rem; /* Increased gap */
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .shaming-container {
+            width: 350px;
+            flex-shrink: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: center;
+            gap: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            padding: 2rem;
+        }
+
+        .shaming-container.visible {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #shaming-line {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            line-height: 1.4;
+        }
+
+        .consequences {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .consequence-item {
+            background-color: var(--background-color);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .consequence-label {
+            font-size: 0.9rem;
+            color: var(--text-color-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .consequence-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        #share-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        #share-btn.visible {
+            display: inline-flex;
+        }
+
+        .modal-disclaimer {
+            font-size: 0.8rem;
+            color: var(--text-color-muted);
+            margin-top: 1rem;
+        }
+
+        .result-container {
+            flex-grow: 1;
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .result-container.visible {
+            display: flex;
+        }
+
+        .result-header,
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-title,
+        .history-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .initial-placeholder,
+        .error-message-box {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-color-muted);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+        }
+
+        .error-message-box {
+            color: var(--error-color);
+            border-color: var(--error-color);
+        }
+
+        .category-result {
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(15px);
+            animation: result-fade-in 0.5s ease-out forwards;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .category-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .reason-btn {
+            background-color: transparent;
+            border: 1px solid var(--text-color-muted);
+            color: var(--text-color-muted);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .reason-btn svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.3s;
+        }
+
+        .reason-btn.expanded svg {
+            transform: rotate(45deg);
+        }
+
+        .reason-btn:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        .score-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .score-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .score-label {
+            width: 80px;
+            font-size: 0.9rem;
+            color: var(--text-color-muted);
+        }
+
+        .score-container {
+            flex-grow: 1;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color) 0%, #a8a5ff 100%);
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .score-percentage {
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .reason-text {
+            background-color: var(--background-color);
+            border-radius: 12px;
+            padding: 1rem;
+            line-height: 1.6;
+            color: var(--text-color-muted);
+            margin-top: 1rem;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+
+        .reason-text.visible {
+            display: block;
+        }
+
+        /*================================================================================
+  HISTORY SECTION
+================================================================================*/
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .history-item-container {
+            background-color: var(--background-color);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .history-item:hover {
+            background-color: #1c1c22;
+        }
+
+        .history-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+            margin-right: 1rem;
+        }
+
+        .no-history {
+            text-align: center;
+            color: var(--text-color-muted);
+        }
+
+        .view-summary-btn {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+            flex-shrink: 0;
+            background: var(--border-color);
+            color: var(--text-color-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .history-summary-content {
+            display: none;
+            padding: 0 1rem 1rem 1rem;
+            background-color: var(--background-color);
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, opacity 0.5s ease-out, padding 0.5s ease-out;
+        }
+
+        .history-summary-content.visible {
+            display: block;
+            max-height: 100px;
+            opacity: 1;
+        }
+
+        .summary-line {
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-line strong {
+            color: var(--primary-color);
+        }
+
+        /*================================================================================
+  LOADING OVERLAY
+================================================================================*/
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(11, 11, 15, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-text {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--text-color-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .loading-bar-container {
+            width: 250px;
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loading-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 50%;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+            animation: indeterminate-progress 2s infinite ease-in-out;
+        }
+
+        /*================================================================================
+  FOOTER STYLES
+================================================================================*/
+        .site-footer {
+            width: 100%;
+            text-align: center;
+            background: rgba(26, 26, 30, 0.3);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--border-color);
+            color: var(--text-color-muted);
+            padding: 20px 40px;
+            border-radius: 24px;
+            transition: all 0.4s ease;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .footer-socials {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .social-link {
+            width: 44px;
+            height: 44px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color-muted);
+            transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        .social-link:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+            transform: translateY(-3px);
+        }
+
+        .social-link svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+
+        /*================================================================================
+  ANIMATIONS
+================================================================================*/
+        @keyframes scan {
+            from {
+                background-position-y: 0;
+            }
+            to {
+                background-position-y: 200px;
+            }
+        }
+
+        @keyframes pulsate-glow {
+            0%,
+            100% {
+                filter: drop-shadow(0 0 20px rgba(79, 70, 229, 0.5));
+            }
+            50% {
+                filter: drop-shadow(0 0 35px rgba(79, 70, 229, 0.7));
+            }
+        }
+
+        @keyframes wipe-across {
+            0% {
+                left: -100%;
+            }
+            50% {
+                left: 0;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        @keyframes result-fade-in {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes indeterminate-progress {
+            0% {
+                left: -50%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        /*================================================================================
+  RESPONSIVE DESIGN
+================================================================================*/
+        @media (max-width: 950px) {
+            body {
+                padding: 2rem 1rem; /* Adjust padding for tablets */
+            }
+            .content-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .shaming-container {
+                width: 100%;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .controls-container {
+                flex-direction: column;
+            }
+            .mic-btn {
+                width: 100%;
+            }
+            .site-footer {
+                flex-direction: column;
+                justify-content: center;
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Procedural background from example.html -->
@@ -88,8 +1024,569 @@
             <div id="history-list" class="history-list">
             </div>
         </section>
+
+        <footer class="site-footer">
+            <p>&copy; 2025 Ethan Peter. All Rights Reserved.</p>
+            <div class="footer-socials">
+                <a href="#" class="social-link" aria-label="GitHub">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.477 0 10c0 4.418 2.865 8.166 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0020 10c0-5.523-4.477-10-10-10z" clip-rule="evenodd"></path></svg>
+                </a>
+                <a href="#" class="social-link" aria-label="LinkedIn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.25 6.5 1.75 1.75 0 016.5 8.25zM19 19h-3v-4.74c0-1.42-.6-2.16-1.76-2.16-1.4 0-2.24.98-2.24 2.16V19h-3v-9h2.9v1.3h.04c.38-.7 1.3-1.44 2.86-1.44 3.1 0 3.64 2.04 3.64 4.7v4.44z"></path></svg>
+                </a>
+                <a href="#" class="social-link" aria-label="Twitter">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+                </a>
+            </div>
+        </footer>
     </main>
 
-    <script src="/static/script.js"></script>
+    <script>
+        'use strict';
+
+const App = {
+    // Configuration
+    config: {
+        splashScreen: {
+            initialText: "not10gamer",
+            finalText: "Ethan Peter",
+            chars: "ABCDEFGHIJKLMONPQRSTUVWXYZ1234567890*<>",
+            revealSpeed: 150,
+            scrambleSpeed: 75,
+            wipeDuration: 1200,
+            postWipePause: 1500,
+        },
+        blobAnimation: {
+            count: 5,
+        },
+        history: {
+            maxLength: 10,
+        }
+    },
+
+    // DOM Elements
+    elements: {
+        mainContainer: document.getElementById('main-container'),
+        textInput: document.getElementById('text-input'),
+        analyzeBtn: document.getElementById('analyze-btn'),
+        resultContainer: document.getElementById('result-container'),
+        resultsDiv: document.getElementById('results'),
+        shamingContainer: document.getElementById('shaming-container'),
+        shamingLine: document.getElementById('shaming-line'),
+        beatenUpProbEl: document.getElementById('beaten-up-prob'),
+        cancelledProbEl: document.getElementById('cancelled-prob'),
+        micBtn: document.getElementById('mic-btn'),
+        loadingOverlay: document.getElementById('loading-overlay'),
+        shareBtn: document.getElementById('share-btn'),
+        historyList: document.getElementById('history-list'),
+        clearHistoryBtn: document.getElementById('clear-history-btn'),
+        splashScreen: document.getElementById('splash-screen'),
+        codeLoader: document.getElementById('code-loader'),
+        wipeElement: document.getElementById('wipe-transition'),
+        proceduralBg: document.getElementById('procedural-background'),
+        particleCanvas: document.getElementById('particle-canvas'),
+        cursorDot: document.querySelector('.cursor-dot'),
+        cursorAura: document.querySelector('.cursor-aura'),
+    },
+
+    // State
+    state: {
+        currentAnalysisData: null,
+        recognition: null,
+    },
+
+    // Initialization
+    init() {
+        window.addEventListener('error', this.handleGlobalError.bind(this));
+        document.addEventListener('DOMContentLoaded', this.handleDOMLoaded.bind(this));
+    },
+
+    handleDOMLoaded() {
+        this.initSplashScreen();
+        this.initProceduralBackground();
+        this.initInteractiveEffects();
+        this.initEventListeners();
+        this.setInitialState();
+    },
+
+    setInitialState() {
+        if (this.elements.resultsDiv) {
+            this.elements.resultsDiv.innerHTML = '<div class="initial-placeholder"><p>Your analysis will appear here.</p></div>';
+        }
+        this.History.load();
+    },
+
+    // Event Listeners
+    initEventListeners() {
+        if (this.elements.analyzeBtn) {
+            this.elements.analyzeBtn.addEventListener('click', this.handleAnalyzeClick.bind(this));
+        }
+        if (this.elements.micBtn) {
+            this.initVoiceInput();
+            this.elements.micBtn.addEventListener('click', this.handleMicClick.bind(this));
+        }
+        if (this.elements.shareBtn) {
+            this.elements.shareBtn.addEventListener('click', this.handleShareClick.bind(this));
+        }
+        if (this.elements.clearHistoryBtn) {
+            this.elements.clearHistoryBtn.addEventListener('click', this.History.clear.bind(this.History));
+        }
+    },
+
+    // Splash Screen
+    initSplashScreen() {
+        const { splashScreen, codeLoader, wipeElement } = this.elements;
+        if (!splashScreen || !codeLoader || !wipeElement) {
+            if(splashScreen) splashScreen.style.display = 'none';
+            this.showMainContent();
+            return;
+        }
+
+        const { initialText, finalText, chars, revealSpeed, scrambleSpeed, wipeDuration, postWipePause } = this.config.splashScreen;
+        let step = 0;
+        let scrambleInterval, revealInterval;
+
+        const scramble = (targetText) => {
+            let revealedText = "";
+            for (let i = 0; i < targetText.length; i++) {
+                if (i < step) revealedText += targetText[i];
+                else revealedText += chars[Math.floor(Math.random() * chars.length)];
+            }
+            codeLoader.textContent = revealedText;
+        };
+
+        const startWipeTransition = () => {
+            codeLoader.classList.add('is-blurring-out');
+            setTimeout(() => {
+                codeLoader.textContent = finalText;
+                codeLoader.classList.remove('is-blurring-out');
+            }, wipeDuration / 2);
+            wipeElement.classList.add('animate');
+            setTimeout(fadeOutSplash, wipeDuration + postWipePause);
+        };
+
+        const fadeOutSplash = () => {
+            splashScreen.style.opacity = '0';
+            splashScreen.addEventListener('transitionend', (e) => {
+                if (e.target === splashScreen) {
+                    splashScreen.style.display = 'none';
+                    this.showMainContent();
+                }
+            }, { once: true });
+        };
+
+        revealInterval = setInterval(() => {
+            if (step < initialText.length) {
+                step++;
+            } else {
+                clearInterval(revealInterval);
+                clearInterval(scrambleInterval);
+                codeLoader.textContent = initialText;
+                setTimeout(startWipeTransition, 800);
+            }
+        }, revealSpeed);
+
+        scrambleInterval = setInterval(() => scramble(initialText), scrambleSpeed);
+    },
+
+    showMainContent() {
+        if (this.elements.mainContainer) {
+            this.elements.mainContainer.classList.add('visible');
+            setTimeout(() => this.elements.mainContainer.classList.add('loaded'), 500);
+        }
+    },
+
+    // Backgrounds and Effects
+    initProceduralBackground() {
+        const canvas = this.elements.proceduralBg;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let blobs = [];
+        const blobCount = this.config.blobAnimation.count;
+
+        const setCanvasDimensions = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = document.body.scrollHeight;
+        };
+
+        window.addEventListener('resize', setCanvasDimensions);
+        new MutationObserver(setCanvasDimensions).observe(document.body, { childList: true, subtree: true });
+
+        class Blob {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.radius = Math.random() * 400 + 400;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.maxLife = Math.random() * 800 + 1000;
+                this.life = this.maxLife;
+                this.alpha = 0;
+                this.hueStart = Math.random() * 90 + 240;
+                this.hueRange = 30;
+                this.color = { h: this.hueStart, s: 70, l: 50 };
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                if (this.x + this.radius > canvas.width || this.x - this.radius < 0) this.vx *= -1;
+                if (this.y + this.radius > canvas.height || this.y - this.radius < 0) this.vy *= -1;
+                const lifeProgress = (this.maxLife - this.life) / this.maxLife;
+                this.color.h = this.hueStart + Math.sin(lifeProgress * Math.PI) * this.hueRange;
+                this.alpha = 0.15 * Math.sin(lifeProgress * Math.PI);
+            }
+            draw() {
+                ctx.beginPath();
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                const colorString = `hsla(${this.color.h}, ${this.color.s}%, ${this.color.l}%, ${this.alpha})`;
+                const transparentString = `hsla(${this.color.h}, ${this.color.s}%, ${this.color.l}%, 0)`;
+                gradient.addColorStop(0, colorString);
+                gradient.addColorStop(1, transparentString);
+                ctx.fillStyle = gradient;
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const createBlobs = () => {
+            blobs = [];
+            for (let i = 0; i < blobCount; i++) {
+                blobs.push(new Blob());
+            }
+        };
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            blobs.forEach((blob, index) => {
+                blob.update();
+                blob.draw();
+                if (blob.life <= 0) {
+                    blobs[index] = new Blob();
+                }
+            });
+            requestAnimationFrame(animate);
+        };
+
+        setCanvasDimensions();
+        createBlobs();
+        animate();
+    },
+
+    initInteractiveEffects() {
+        const { cursorDot, cursorAura } = this.elements;
+        if (!cursorDot || !cursorAura) return;
+
+        let mouseX = 0, mouseY = 0;
+        let auraX = 0, auraY = 0;
+        const lagAmount = 0.2;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        const animateEffects = () => {
+            auraX += (mouseX - auraX) * lagAmount;
+            auraY += (mouseY - auraY) * lagAmount;
+            cursorDot.style.transform = `translate(${mouseX - (cursorDot.offsetWidth / 2)}px, ${mouseY - (cursorDot.offsetHeight / 2)}px)`;
+            cursorAura.style.transform = `translate(${auraX - (cursorAura.offsetWidth / 2)}px, ${auraY - (cursorAura.offsetHeight / 2)}px)`;
+            requestAnimationFrame(animateEffects);
+        };
+        animateEffects();
+
+        const interactiveElements = document.querySelectorAll('a, button, .text-input, .history-item');
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorDot.classList.add('hovered');
+                cursorAura.classList.add('hovered');
+            });
+            el.addEventListener('mouseleave', () => {
+                cursorDot.classList.remove('hovered');
+                cursorAura.classList.remove('hovered');
+            });
+        });
+
+        const buttons = document.querySelectorAll('.cta-primary, .cta-secondary, .mic-btn');
+        buttons.forEach(button => {
+            button.addEventListener('mousemove', e => {
+                const rect = button.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                button.style.setProperty('--x', `${x}px`);
+                button.style.setProperty('--y', `${y}px`);
+            });
+        });
+    },
+
+    // Voice Input
+    initVoiceInput() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            this.state.recognition = new SpeechRecognition();
+            this.state.recognition.continuous = true;
+            this.state.recognition.interimResults = true;
+            this.state.recognition.lang = 'en-US';
+
+            this.state.recognition.onstart = () => {
+                this.elements.micBtn.classList.add('recording');
+                this.elements.micBtn.title = 'Stop Recording';
+                this.elements.textInput.placeholder = 'Listening...';
+            };
+            this.state.recognition.onend = () => {
+                this.elements.micBtn.classList.remove('recording');
+                this.elements.micBtn.title = 'Use Voice Input';
+                this.elements.textInput.placeholder = 'Enter text or use the microphone...';
+            };
+            this.state.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed') {
+                    alert('Microphone access was denied. Please allow microphone access in your browser settings.');
+                }
+            };
+            this.state.recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    }
+                }
+                this.elements.textInput.value += finalTranscript;
+            };
+        } else {
+            console.warn('Speech Recognition not supported in this browser.');
+            this.elements.micBtn.disabled = true;
+            this.elements.micBtn.title = 'Voice input not supported';
+        }
+    },
+
+    handleMicClick() {
+        if (this.elements.micBtn.classList.contains('recording')) {
+            this.state.recognition.stop();
+        } else {
+            this.state.recognition.start();
+        }
+    },
+
+    // Analysis
+    async handleAnalyzeClick() {
+        const text = this.elements.textInput.value.trim();
+        if (!text) return;
+
+        this.resetUIForAnalysis();
+        this.toggleLoading(true);
+
+        try {
+            // This is a placeholder for an actual API call.
+            // In a real application, you would fetch from your backend.
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+
+            // Mocked response data
+            const data = {
+                "racism": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for racism analysis." },
+                "sexism": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for sexism analysis." },
+                "homophobia": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for homophobia analysis." },
+                "religious_blasphemy": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for religious blasphemy analysis." },
+                "shaming_line": "Your words might be perceived as highly insensitive.",
+                "probability_beaten_up": Math.floor(Math.random() * 100),
+                "probability_cancelled": Math.floor(Math.random() * 100),
+                "history_summary": "Contains potentially offensive language.",
+                "conversational_reception_score": Math.floor(Math.random() * 100)
+            };
+
+            this.state.currentAnalysisData = data;
+            this.History.save(text, data);
+            this.displayShamingAndConsequences(data);
+            this.displayResults(data);
+            this.elements.resultContainer.classList.add('visible');
+            this.elements.shareBtn.classList.add('visible');
+        } catch (error) {
+            console.error('Error:', error);
+            this.displayError(error.message || "Could not analyze the text.");
+        } finally {
+            this.toggleLoading(false);
+        }
+    },
+
+    // UI Updates
+    resetUIForAnalysis() {
+        this.elements.resultContainer.classList.remove('visible');
+        this.elements.shamingContainer.classList.remove('visible');
+        this.elements.shareBtn.classList.remove('visible', 'success');
+        this.elements.shareBtn.querySelector('span').textContent = 'Share Results';
+        this.elements.resultsDiv.innerHTML = '';
+        this.elements.shamingLine.textContent = '';
+        this.state.currentAnalysisData = null;
+    },
+
+    displayResults(data) {
+        this.elements.resultsDiv.innerHTML = '';
+        const categories = ['racism', 'sexism', 'homophobia', 'religious_blasphemy', ...data.other_minorities?.map(m => m.group) || []];
+        categories.forEach((category, index) => {
+            const categoryData = data[category] || data.other_minorities?.find(m => m.group === category);
+            if (categoryData) {
+                const resultElement = this.createCategoryResult(category, categoryData);
+                resultElement.style.animationDelay = `${index * 100}ms`;
+                this.elements.resultsDiv.appendChild(resultElement);
+            }
+        });
+    },
+
+    createCategoryResult(title, data) {
+        const resultElement = document.createElement('div');
+        resultElement.classList.add('category-result');
+        const categoryTitle = title.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        resultElement.innerHTML = `
+            <div class="category-header">
+                <h3 class="category-title">${categoryTitle}</h3>
+                <button class="reason-btn" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+            </div>
+            <div class="score-section">
+                <div class="score-display">
+                    <span class="score-label">AI Score</span>
+                    <div class="score-container"><div class="score-bar" style="width: ${data.ai_score}%;"></div></div>
+                    <span class="score-percentage">${data.ai_score}%</span>
+                </div>
+                <div class="score-display">
+                    <span class="score-label">Potential</span>
+                    <div class="score-container"><div class="score-bar" style="width: ${data.potential_score}%;"></div></div>
+                    <span class="score-percentage">${data.potential_score}%</span>
+                </div>
+            </div>
+            <p class="reason-text">${data.reason}</p>
+        `;
+        const reasonBtn = resultElement.querySelector('.reason-btn');
+        const reasonText = resultElement.querySelector('.reason-text');
+        reasonBtn.addEventListener('click', () => {
+            const isExpanded = reasonBtn.getAttribute('aria-expanded') === 'true';
+            reasonBtn.setAttribute('aria-expanded', !isExpanded);
+            reasonBtn.classList.toggle('expanded');
+            reasonText.classList.toggle('visible');
+        });
+        return resultElement;
+    },
+
+    displayShamingAndConsequences(data) {
+        if (data.shaming_line) {
+            this.elements.shamingLine.textContent = data.shaming_line;
+            this.elements.shamingContainer.classList.add('visible');
+        }
+        if (data.hasOwnProperty('probability_beaten_up') && data.hasOwnProperty('probability_cancelled')) {
+            this.elements.beatenUpProbEl.textContent = `${data.probability_beaten_up}%`;
+            this.elements.cancelledProbEl.textContent = `${data.probability_cancelled}%`;
+        }
+    },
+
+    displayError(errorMessage) {
+        this.elements.resultsDiv.innerHTML = `
+            <div class="error-message-box">
+                <p><strong>Analysis Failed</strong></p>
+                <p>${errorMessage}</p>
+            </div>
+        `;
+        this.elements.resultContainer.classList.add('visible');
+        this.elements.shamingContainer.classList.remove('visible');
+    },
+
+    toggleLoading(isLoading) {
+        this.elements.mainContainer.classList.toggle('loading', isLoading);
+        this.elements.loadingOverlay.classList.toggle('visible', isLoading);
+    },
+
+    // Share
+    handleShareClick() {
+        if (!this.state.currentAnalysisData) return;
+        const { shaming_line, probability_beaten_up, probability_cancelled } = this.state.currentAnalysisData;
+        const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%\n- Chance of being cancelled: ${probability_cancelled}%\n\nAnalyze your own text at this website!`;
+        navigator.clipboard.writeText(shareText).then(() => {
+            this.elements.shareBtn.classList.add('success');
+            this.elements.shareBtn.querySelector('span').textContent = 'Copied!';
+            setTimeout(() => {
+                this.elements.shareBtn.classList.remove('success');
+                this.elements.shareBtn.querySelector('span').textContent = 'Share Results';
+            }, 2000);
+        });
+    },
+
+    // History
+    History: {
+        get() {
+            return JSON.parse(localStorage.getItem('offenseHistory')) || [];
+        },
+        set(history) {
+            localStorage.setItem('offenseHistory', JSON.stringify(history));
+        },
+        save(text, data) {
+            let history = this.get();
+            history.unshift({ text, data, date: new Date().toISOString() });
+            if (history.length > App.config.history.maxLength) history.pop();
+            this.set(history);
+            this.load();
+        },
+        load() {
+            if (!App.elements.historyList) return;
+            App.elements.historyList.innerHTML = '';
+            const history = this.get();
+            if (history.length === 0) {
+                App.elements.historyList.innerHTML = '<p class="no-history">No past analyses found.</p>';
+                return;
+            }
+            history.forEach(item => {
+                const historyItemContainer = document.createElement('div');
+                historyItemContainer.classList.add('history-item-container');
+
+                const historyItem = document.createElement('div');
+                historyItem.classList.add('history-item');
+                historyItem.innerHTML = `
+                    <p class="history-text">${item.text}</p>
+                    <button class="view-summary-btn cta-secondary">View Summary</button>
+                `;
+
+                const summaryContent = document.createElement('div');
+                summaryContent.classList.add('history-summary-content');
+                summaryContent.innerHTML = `
+                    <p class="summary-line"><strong>AI Summary:</strong> ${item.data.history_summary}</p>
+                    <p class="summary-line"><strong>Reception Score:</strong> ${item.data.conversational_reception_score}/100</p>
+                `;
+
+                historyItemContainer.appendChild(historyItem);
+                historyItemContainer.appendChild(summaryContent);
+                App.elements.historyList.appendChild(historyItemContainer);
+
+                const summaryBtn = historyItem.querySelector('.view-summary-btn');
+                summaryBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    summaryContent.classList.toggle('visible');
+                });
+
+                historyItem.querySelector('.history-text').addEventListener('click', () => {
+                    App.elements.textInput.value = item.text;
+                    App.resetUIForAnalysis();
+                    App.state.currentAnalysisData = item.data;
+                    App.displayShamingAndConsequences(item.data);
+                    App.displayResults(item.data);
+                    App.elements.resultContainer.classList.add('visible');
+                    App.elements.shareBtn.classList.add('visible');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        },
+        clear() {
+            localStorage.removeItem('offenseHistory');
+            this.load();
+        }
+    },
+
+    // Error Handling
+    handleGlobalError(e) {
+        console.warn('JavaScript error caught:', e.message, 'at', e.filename, ':', e.lineno);
+        return true;
+    }
+};
+
+App.init();
+    </script>
 </body>
 </html>
