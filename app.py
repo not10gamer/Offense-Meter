@@ -72,8 +72,9 @@ def analyze():
         return jsonify(analysis_result)
 
     except Exception as e:
-        print(f"Error during analysis: {e}")
-        return jsonify({'error': 'Failed to analyze the text. Please try again.'}), 500
+        error_message = f"An error occurred: {str(e)}"
+        print(f"Error during analysis: {error_message}")
+        return jsonify({'error': error_message}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
