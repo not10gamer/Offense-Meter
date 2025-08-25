@@ -47,7 +47,7 @@
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
-            padding: 4rem 2rem; /* Increased vertical padding */
+            padding: 5rem 2rem; /* Increased vertical padding */
             overflow-x: hidden;
             cursor: none;
             position: relative;
@@ -218,7 +218,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 28px;
-            padding: 2.5rem;
+            padding: 3rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
             position: relative;
@@ -957,7 +957,7 @@
 ================================================================================*/
         @media (max-width: 950px) {
             body {
-                padding: 2rem 1rem; /* Adjust padding for tablets */
+                padding: 3rem 1.5rem; /* Adjust padding for tablets */
             }
             .content-wrapper {
                 flex-direction: column;
@@ -1400,24 +1400,20 @@ const App = {
         this.toggleLoading(true);
 
         try {
-            // This is a placeholder for a real API call.
-            // In a real application, you would fetch from your backend endpoint.
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text }),
+            });
 
-            // Mock response data
-            const data = {
-                "racism": { "ai_score": 85, "potential_score": 95, "reason": "Contains multiple slurs and stereotypes targeting a specific racial group." },
-                "sexism": { "ai_score": 20, "potential_score": 40, "reason": "Uses language that could be interpreted as dismissive towards women." },
-                "homophobia": { "ai_score": 5, "potential_score": 10, "reason": "No direct homophobic content detected." },
-                "religious_blasphemy": { "ai_score": 50, "potential_score": 65, "reason": "Critiques religious figures in a manner that could be seen as disrespectful by believers." },
-                "shaming_line": "Your words are a dumpster fire of bigotry.",
-                "probability_beaten_up": 78,
-                "probability_cancelled": 92,
-                "probability_parental_disapproval": 100,
-                "history_summary": "High racism, moderate blasphemy.",
-                "conversational_reception_score": 15
-            };
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Invalid JSON response from server.' }));
+                throw new Error(errorData.error || `Server returned status: ${response.status}`);
+            }
 
+            const data = await response.json();
 
             this.state.currentAnalysisData = data;
             this.History.save(text, data);
