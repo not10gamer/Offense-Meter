@@ -669,8 +669,8 @@
         .reason-text {
             background-color: var(--background-color);
             border-radius: 12px;
-            padding: 0 1rem;
-            line-height: 1.6;
+            padding: 0 1.5rem; /* Increased horizontal padding */
+            line-height: 1.7; /* Increased line height */
             color: var(--text-color-muted);
             margin-top: 0;
             border: 1px solid var(--border-color);
@@ -681,9 +681,9 @@
         }
 
         .reason-text.visible {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            padding-bottom: 1rem;
+            margin-top: 1.5rem; /* Increased margin */
+            padding-top: 1.5rem; /* Increased vertical padding */
+            padding-bottom: 1.5rem; /* Increased vertical padding */
             opacity: 1;
         }
 
@@ -740,7 +740,7 @@
         }
 
         .history-summary-content {
-            padding: 0 1rem;
+            padding: 0 1.5rem; /* Increased horizontal padding */
             background-color: var(--background-color);
             max-height: 0;
             opacity: 0;
@@ -750,12 +750,13 @@
 
         .history-summary-content.visible {
             opacity: 1;
-            padding-top: 1rem;
-            padding-bottom: 1rem;
+            padding-top: 1.5rem; /* Increased vertical padding */
+            padding-bottom: 1.5rem; /* Increased vertical padding */
         }
 
         .summary-line {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem; /* Increased spacing between lines */
+            line-height: 1.7; /* Added for better readability */
         }
 
         .summary-line strong {
