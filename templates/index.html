@@ -1374,22 +1374,20 @@ const App = {
         this.toggleLoading(true);
 
         try {
-            // This is a placeholder for an actual API call.
-            // In a real application, you would fetch from your backend.
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text }),
+            });
 
-            // Mocked response data
-            const data = {
-                "racism": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for racism analysis." },
-                "sexism": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for sexism analysis." },
-                "homophobia": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for homophobia analysis." },
-                "religious_blasphemy": { "ai_score": Math.floor(Math.random() * 100), "potential_score": Math.floor(Math.random() * 100), "reason": "This is a mock reason for religious blasphemy analysis." },
-                "shaming_line": "Your words might be perceived as highly insensitive.",
-                "probability_beaten_up": Math.floor(Math.random() * 100),
-                "probability_cancelled": Math.floor(Math.random() * 100),
-                "history_summary": "Contains potentially offensive language.",
-                "conversational_reception_score": Math.floor(Math.random() * 100)
-            };
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Invalid JSON response from server.' }));
+                throw new Error(errorData.error || `Server returned status: ${response.status}`);
+            }
+
+            const data = await response.json();
 
             this.state.currentAnalysisData = data;
             this.History.save(text, data);
