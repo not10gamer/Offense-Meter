@@ -657,6 +657,7 @@
             background: linear-gradient(90deg, var(--primary-color) 0%, #FBBF24 50%, var(--error-color) 100%);
             border-radius: 4px;
             transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+            width: 0;
         }
 
         .score-percentage {
@@ -748,7 +749,6 @@
         }
 
         .history-summary-content.visible {
-            max-height: 250px; /* Increased height */
             opacity: 1;
             padding-top: 1rem;
             padding-bottom: 1rem;
@@ -1451,6 +1451,13 @@ const App = {
                 this.elements.resultsDiv.appendChild(resultElement);
             }
         });
+
+        // Animate score bars
+        setTimeout(() => {
+            this.elements.resultsDiv.querySelectorAll('.score-bar').forEach(bar => {
+                bar.style.width = `${bar.dataset.score}%`;
+            });
+        }, 100); // Delay to allow rendering and trigger transition
     },
 
     createCategoryResult(title, data) {
@@ -1467,13 +1474,13 @@ const App = {
             <div class="score-section">
                 <div class="score-display">
                     <span class="score-label">AI Score</span>
-                    <div class="score-container"><div class="score-bar" style="width: ${data.ai_score}%;"></div></div>
-                    <span class="score-percentage">${data.ai_score}%</span>
+                    <div class="score-container"><div class="score-bar" data-score="${data.ai_score || 0}"></div></div>
+                    <span class="score-percentage">${data.ai_score || 0}%</span>
                 </div>
                 <div class="score-display">
                     <span class="score-label">Potential</span>
-                    <div class="score-container"><div class="score-bar" style="width: ${data.potential_score}%;"></div></div>
-                    <span class="score-percentage">${data.potential_score}%</span>
+                    <div class="score-container"><div class="score-bar" data-score="${data.potential_score || 0}"></div></div>
+                    <span class="score-percentage">${data.potential_score || 0}%</span>
                 </div>
             </div>
             <p class="reason-text">${data.reason}</p>
@@ -1600,11 +1607,13 @@ Analyze your own text at this website!`;
                     const allSummaries = App.elements.historyList.querySelectorAll('.history-summary-content.visible');
                     allSummaries.forEach(summary => {
                         summary.classList.remove('visible');
+                        summary.style.maxHeight = null;
                     });
 
                     // If the clicked one wasn't visible, open it
                     if (!isCurrentlyVisible) {
                         summaryContent.classList.add('visible');
+                        summaryContent.style.maxHeight = summaryContent.scrollHeight + 'px';
                     }
                 });
 
