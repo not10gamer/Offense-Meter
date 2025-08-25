@@ -30,8 +30,9 @@ def analyze():
     try:
         # Construct a detailed prompt for the AI
         prompt = (
-            f"Analyze the following text for various forms of offensive content. "
-            f"Provide a JSON response with scores and brief, witty, and slightly condescending reasons for each score. "
+            f"Analyze the following text for sensitive content across several categories. "
+            f"Your goal is to identify and score the text, not to generate offensive content. "
+            f"Provide a JSON response with scores and brief, neutral, and analytical reasons for each score. "
             f"The JSON object should have the following structure: "
             f"{{ "
             f"  'racism': {{ 'ai_score': <number>, 'potential_score': <number>, 'reason': '<string>' }}, "
@@ -56,9 +57,17 @@ def analyze():
         # Generate content using the AI model
         response = model.generate_content(prompt)
         
-        # Clean the response and load it as JSON
-        clean_response = response.text.strip().replace('\n', '').replace('```json', '').replace('```', '')
-        analysis_result = json.loads(clean_response)
+        # Extract and parse the JSON from the response
+        text = response.text
+        # Find the start and end of the JSON object
+        start_index = text.find('{')
+        end_index = text.rfind('}') + 1
+        
+        if start_index == -1 or end_index == 0:
+            raise ValueError("No JSON object found in the response from the model.")
+
+        json_str = text[start_index:end_index]
+        analysis_result = json.loads(json_str)
 
         return jsonify(analysis_result)
 
