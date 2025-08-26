@@ -1550,29 +1550,22 @@ const App = {
             this.elements.shamingContainer.classList.add('visible');
         }
 
-        const beatenUp = data.probability_beaten_up;
-        if (beatenUp) {
-            this.elements.beatenUpProbEl.textContent = `${beatenUp.score || beatenUp}%`;
-            if (beatenUp.reason) {
-                this.elements.beatenUpProbEl.parentElement.setAttribute('data-tooltip', beatenUp.reason);
+        const updateConsequence = (dataKey, element) => {
+            const consequence = data[dataKey];
+            if (consequence !== undefined && consequence !== null) {
+                const score = (consequence.score !== undefined) ? consequence.score : consequence;
+                element.textContent = `${score}%`;
+                if (consequence.reason) {
+                    element.parentElement.setAttribute('data-tooltip', consequence.reason);
+                } else {
+                    element.parentElement.removeAttribute('data-tooltip');
+                }
             }
-        }
+        };
 
-        const cancelled = data.probability_cancelled;
-        if (cancelled) {
-            this.elements.cancelledProbEl.textContent = `${cancelled.score || cancelled}%`;
-            if (cancelled.reason) {
-                this.elements.cancelledProbEl.parentElement.setAttribute('data-tooltip', cancelled.reason);
-            }
-        }
-
-        const parental = data.probability_parental_disapproval;
-        if (parental) {
-            this.elements.parentalDisapprovalProbEl.textContent = `${parental.score || parental}%`;
-            if (parental.reason) {
-                this.elements.parentalDisapprovalProbEl.parentElement.setAttribute('data-tooltip', parental.reason);
-            }
-        }
+        updateConsequence('probability_beaten_up', this.elements.beatenUpProbEl);
+        updateConsequence('probability_cancelled', this.elements.cancelledProbEl);
+        updateConsequence('probability_parental_disapproval', this.elements.parentalDisapprovalProbEl);
     },
 
     displayError(errorMessage) {
@@ -1595,11 +1588,12 @@ const App = {
     handleShareClick() {
         if (!this.state.currentAnalysisData) return;
         const { shaming_line, probability_beaten_up, probability_cancelled, probability_parental_disapproval } = this.state.currentAnalysisData;
-        const shareText = `My Offense Meter Results:\n\n"${shaming_line}"\n\n- Chance of being beaten up: ${probability_beaten_up}%
-- Chance of being cancelled: ${probability_cancelled}%
-- Parental Disapproval: ${probability_parental_disapproval}%
 
-Analyze your own text at this website!`;
+        const beatenUpScore = (probability_beaten_up.score !== undefined) ? probability_beaten_up.score : probability_beaten_up;
+        const cancelledScore = (probability_cancelled.score !== undefined) ? probability_cancelled.score : probability_cancelled;
+        const parentalScore = (probability_parental_disapproval.score !== undefined) ? probability_parental_disapproval.score : probability_parental_disapproval;
+
+        const shareText = `My Offense Meter Results:\n\n\"${shaming_line}\"\n\n- Chance of being beaten up: ${beatenUpScore}%\n- Chance of being cancelled: ${cancelledScore}%\n- Parental Disapproval: ${parentalScore}%\n\nAnalyze your own text at this website!`;
         navigator.clipboard.writeText(shareText).then(() => {
             this.elements.shareBtn.classList.add('success');
             this.elements.shareBtn.querySelector('span').textContent = 'Copied!';
