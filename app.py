@@ -8,13 +8,6 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Configure the generative AI model
-api_key = os.getenv("GOOGLE_API_KEY")
-if not api_key:
-    raise ValueError("GOOGLE_API_KEY not found in environment variables.")
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-2.5-flash-lite')
-
 
 @app.route('/')
 def index():
@@ -23,6 +16,12 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return jsonify({'error': 'GOOGLE_API_KEY not found on the server.'}), 500
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-2.5-flash-lite')
+
     data = request.get_json()
     text_to_analyze = data.get('text')
 
