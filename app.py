@@ -15,9 +15,11 @@ if not api_key:
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -41,15 +43,15 @@ def analyze():
             f"  'religious_blasphemy': {{ 'ai_score': <number>, 'potential_score': <number>, 'reason': '<string>' }}, "
             f"  'other_minorities': [ {{ 'group': '<string>', 'ai_score': <number>, 'potential_score': <number>, 'reason': '<string>' }} ], "
             f"  'shaming_line': '<string>', "
-            f"  'probability_beaten_up': <number>, "
-            f"  'probability_cancelled': <number>, "
-            f"  'probability_parental_disapproval': <number>, "
+            f"  'probability_beaten_up': {{ 'score': <number>, 'reason': '<string>' }}, "
+            f"  'probability_cancelled': {{ 'score': <number>, 'reason': '<string>' }}, "
+            f"  'probability_parental_disapproval': {{ 'score': <number>, 'reason': '<string>' }}, "
             f"  'history_summary': '<string>', "
             f"  'conversational_reception_score': <number> "
             f"}}. "
             f"Scores should be from 0 to 100. 'ai_score' is the direct offensiveness, and 'potential_score' is how it could be misinterpreted. "
             f"'shaming_line' should be a witty, slightly shaming comment about the input text. "
-            f"'probability_beaten_up', 'probability_cancelled', and 'probability_parental_disapproval' are satirical percentages. "
+            f"'probability_beaten_up', 'probability_cancelled', and 'probability_parental_disapproval' are satirical percentages. For these probability fields, provide a brief, satirical reason for the assigned score. "
             f"'history_summary' is a very brief summary for the history view. "
             f"'conversational_reception_score' is a score from 0-100 on how well the text would be received. "
             f"Text to analyze: \"{text_to_analyze}\""
@@ -60,7 +62,7 @@ def analyze():
         
         # Extract and parse the JSON from the response
         text = response.text
-        # Extract JSON from the response, handling markdown code blocks
+        # Extract JSON from the response, handling Markdown code blocks
         if '```json' in text:
             json_str = text.split('```json')[1].split('```')[0].strip()
         elif '```' in text and '{' in text:
@@ -82,6 +84,7 @@ def analyze():
         error_message = f"An error occurred: {str(e)}"
         print(f"Error during analysis: {error_message}")
         return jsonify({'error': error_message}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

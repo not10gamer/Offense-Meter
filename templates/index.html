@@ -506,6 +506,47 @@
             padding: 1rem;
             border-radius: 12px;
             border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .consequence-item[data-tooltip]:hover::before,
+        .consequence-item[data-tooltip]:hover::after {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .consequence-item[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            line-height: 1.4;
+            width: 220px;
+            text-align: center;
+            white-space: normal;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .consequence-item[data-tooltip]::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--primary-color) transparent transparent transparent;
+            opacity: 0;
+            pointer-events: none;
         }
 
         .consequence-label {
@@ -750,8 +791,8 @@
 
         .history-summary-content.visible {
             opacity: 1;
-            padding-top: 1.5rem;
-            padding-bottom: 1.5rem;
+            padding-top: 1rem;
+            padding-bottom: 2rem;
         }
 
         .summary-line {
@@ -1508,10 +1549,29 @@ const App = {
             this.elements.shamingLine.textContent = data.shaming_line;
             this.elements.shamingContainer.classList.add('visible');
         }
-        if (data.hasOwnProperty('probability_beaten_up') && data.hasOwnProperty('probability_cancelled') && data.hasOwnProperty('probability_parental_disapproval')) {
-            this.elements.beatenUpProbEl.textContent = `${data.probability_beaten_up}%`;
-            this.elements.cancelledProbEl.textContent = `${data.probability_cancelled}%`;
-            this.elements.parentalDisapprovalProbEl.textContent = `${data.probability_parental_disapproval}%`;
+
+        const beatenUp = data.probability_beaten_up;
+        if (beatenUp) {
+            this.elements.beatenUpProbEl.textContent = `${beatenUp.score || beatenUp}%`;
+            if (beatenUp.reason) {
+                this.elements.beatenUpProbEl.parentElement.setAttribute('data-tooltip', beatenUp.reason);
+            }
+        }
+
+        const cancelled = data.probability_cancelled;
+        if (cancelled) {
+            this.elements.cancelledProbEl.textContent = `${cancelled.score || cancelled}%`;
+            if (cancelled.reason) {
+                this.elements.cancelledProbEl.parentElement.setAttribute('data-tooltip', cancelled.reason);
+            }
+        }
+
+        const parental = data.probability_parental_disapproval;
+        if (parental) {
+            this.elements.parentalDisapprovalProbEl.textContent = `${parental.score || parental}%`;
+            if (parental.reason) {
+                this.elements.parentalDisapprovalProbEl.parentElement.setAttribute('data-tooltip', parental.reason);
+            }
         }
     },
 
