@@ -60,14 +60,20 @@ def analyze():
         
         # Extract and parse the JSON from the response
         text = response.text
-        # Find the start and end of the JSON object
-        start_index = text.find('{')
-        end_index = text.rfind('}') + 1
+        # Extract JSON from the response, handling markdown code blocks
+        if '```json' in text:
+            json_str = text.split('```json')[1].split('```')[0].strip()
+        elif '```' in text and '{' in text:
+            json_str = text.split('```')[1].split('```')[0].strip()
+        else:
+            # Fallback for plain JSON
+            start_index = text.find('{')
+            end_index = text.rfind('}') + 1
+            if start_index != -1 and end_index > start_index:
+                json_str = text[start_index:end_index]
+            else:
+                raise ValueError("No JSON object found in the response from the model.")
         
-        if start_index == -1 or end_index == 0:
-            raise ValueError("No JSON object found in the response from the model.")
-
-        json_str = text[start_index:end_index]
         analysis_result = json.loads(json_str)
 
         return jsonify(analysis_result)
